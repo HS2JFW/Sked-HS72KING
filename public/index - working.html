@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HS72KING Operator Sked Info</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    label {
+      margin-bottom: 8px;
+    }
+
+    input[type="text"], select {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+    button[type="button"] {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    button[type="button"]:hover {
+      background-color: #45a049;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #f2f2f2;
+    }
+
+    @media only screen and (max-width: 600px) {
+      table {
+        font-size: 14px;
+      }
+    }
+  </style>
+  <script>
+    const socket = io();
+
+    function checkIn() {
+      const operator = document.getElementById('operator').value;
+      const callSign = 'HS72KING'; // Assuming HS72KING is fixed
+      const band = document.getElementById('band').value;
+      const mode = document.getElementById('mode').value;
+
+      const data = {
+        operator,
+        callSign,
+        band,
+        mode,
+        action: 'check-in'
+      };
+
+      // Emit 'update' event to the server with the updated data
+      socket.emit('update', data);
+    }
+
+    function checkOut(band) {
+      const data = {
+        band,
+        action: 'check-out'
+      };
+
+      // Emit 'update' event to the server with the updated data
+      socket.emit('update', data);
+    }
+
+    // Function to update band information on UI
+    function updateBandInfo(bandData) {
+      const tableBody = document.getElementById('band-table-body');
+      tableBody.innerHTML = ''; // Clear existing table rows
+
+      // Populate table rows with band data
+      const bands = ['1.8', '3.5', '7', '10', '14', '18', '21', '24', '28', 'Satellite'];
+      bands.forEach(band => {
+        const bandInfo = bandData[band];
+        const checkInTime = bandInfo && bandInfo.checkInTime ? new Date(bandInfo.checkInTime).toLocaleString() : '-';
+        const mode = bandInfo && bandInfo.mode ? bandInfo.mode : '-';
+        const operator = bandInfo && bandInfo.operator ? bandInfo.operator : '-';
+        
+        let actionButton = '';
+        if (bandInfo && bandInfo.operator === document.getElementById('operator').value) {
+          actionButton = `<button onclick="checkOut('${band}')">Check Out</button>`;
+        } else {
+          actionButton = `<button disabled>Check Out</button>`;
+        }
+
+        const row = `
+          <tr>
+            <td>${band}</td>
+            <td>${mode}</td>
+            <td>${operator}</td>
+            <td>${checkInTime}</td>
+            <td>${actionButton}</td>
+          </tr>
+        `;
+        tableBody.innerHTML += row;
+      });
+    }
+
+    // Event listener for operator input change
+    document.addEventListener('DOMContentLoaded', () => {
+      const operatorInput = document.getElementById('operator');
+      operatorInput.addEventListener('input', () => {
+        updateBandInfo(lastReceivedBandData); // Refresh table when operator input changes
+      });
+    });
+
+    let lastReceivedBandData = {};
+
+    // Socket.IO script
+    socket.on('update', (bandData) => {
+      lastReceivedBandData = bandData;
+      updateBandInfo(bandData);
+    });
+  </script>
+</head>
+<body>
+  <h1>HS72KING Operator Sked Info</h1>
+  
+  <form>
+    <label for="operator">Operator Call sign ที่ Check in หรือ Check Out:</label>
+    <input type="text" id="operator" name="operator" required><br><br>
+
+    <label for="band">Band:</label>
+    <select id="band" name="band" required>
+      <option value="1.8">1.8 MHz</option>
+      <option value="3.5">3.5 MHz</option>
+      <option value="7">7 MHz</option>
+      <option value="14">14 MHz</option>
+      <option value="10">10 MHz</option>
+      <option value="18">18 MHz</option>
+      <option value="21">21 MHz</option>
+      <option value="24">24 MHz</option>
+      <option value="28">28 MHz</option>
+      <option value="Satellite">Satellite</option>
+    </select><br><br>
+
+    <label for="mode">Mode:</label>
+    <select id="mode" name="mode" required>
+      <option value="CW">CW</option>
+      <option value="SSB">SSB</option>
+      <option value="Digital">Digital</option>
+    </select><br><br>
+
+    <button type="button" onclick="checkIn()">Check In</button>
+  </form>
+
+  <hr>
+
+  <h2>Current Operators:</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Band</th>
+        <th>Mode</th>
+        <th>Operator</th>
+        <th>Check-In Time</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="band-table-body">
+      <!-- Table rows will be dynamically populated here -->
+    </tbody>
+  </table>
+</body>
+</html>
