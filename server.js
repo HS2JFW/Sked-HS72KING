@@ -1,4 +1,3 @@
-
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -17,30 +16,20 @@ app.use(express.static('public'));
 
 // Load bandData from file if it exists
 let bandData = {
-  '1.8': { available: true, operator: null, callSign: null, mode: null, checkInTime: null },
-  '3.5': { available: true, operator: null, callSign: null, mode: null, checkInTime: null },
-  '7': { available: true, operator: null, callSign: null, mode: null, checkInTime: null },
-  '10': { available: true, operator: null, callSign: null, mode: null, checkInTime: null },
-  '14': { available: true, operator: null, callSign: null, mode: null, checkInTime: null },
-  '18': { available: true, operator: null, callSign: null, mode: null, checkInTime: null },
-  '21': { available: true, operator: null, callSign: null, mode: null, checkInTime: null },
-  '24': { available: true, operator: null, callSign: null, mode: null, checkInTime: null },
-  '28': { available: true, operator: null, callSign: null, mode: null, checkInTime: null },
-  'Satellite': { available: true, operator: null, callSign: null, mode: null, checkInTime: null }
+  '1.8': {},
+  '3.5': {},
+  '7': {},
+  '10': {},
+  '14': {},
+  '18': {},
+  '21': {},
+  '24': {},
+  '28': {},
+  'Satellite': {}
 };
 
 if (fs.existsSync(DATA_FILE)) {
   bandData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-}
-
-// Function to find if operator is already checked in to any band
-function isOperatorCheckedIn(operator) {
-  for (let band in bandData) {
-    if (!bandData[band].available && bandData[band].operator === operator) {
-      return true;
-    }
-  }
-  return false;
 }
 
 // Function to save bandData to file
@@ -65,17 +54,10 @@ io.on('connection', (socket) => {
     const { operator, callSign, band, mode, action } = data;
 
     if (action === 'check-in') {
-      // Check if operator is already checked in to another band
-      if (isOperatorCheckedIn(operator)) {
-        socket.emit('error', `Operator ${operator} is already checked in to another band.`);
-        return;
-      }
-
-      // Check if the band is available
-      if (bandData[band].available) {
+      if (!bandData[band][mode]) {
         // Update bandData with the new operator information and check-in time
         const checkInTime = new Date().toISOString();
-        bandData[band] = { available: false, operator, callSign, mode, checkInTime };
+        bandData[band][mode] = { operator, callSign, checkInTime };
 
         // Save updated bandData to file
         saveBandData();
@@ -83,30 +65,21 @@ io.on('connection', (socket) => {
         // Broadcast the updated bandData to all clients
         io.emit('update', bandData);
       } else {
-        // Band is occupied, check if it's the same operator and mode change
-        if (bandData[band].operator === operator && bandData[band].mode !== mode) {
-          // Operator re-checks in with mode change
-          const checkInTime = new Date().toISOString();
-          bandData[band] = { available: false, operator, callSign, mode, checkInTime };
-
-          // Save updated bandData to file
-          saveBandData();
-
-          // Broadcast the updated bandData to all clients
-          io.emit('update', bandData);
-        } else {
-          socket.emit('error', `Band ${band} is already occupied`);
-        }
+        socket.emit('error', `Mode ${mode} on band ${band} is already occupied`);
       }
     } else if (action === 'check-out') {
-      // Update bandData to mark the band as available
-      bandData[band] = { available: true, operator: null, callSign: null, mode: null, checkInTime: null };
+      if (bandData[band][mode]) {
+        // Update bandData to mark the mode on the band as available
+        delete bandData[band][mode];
 
-      // Save updated bandData to file
-      saveBandData();
+        // Save updated bandData to file
+        saveBandData();
 
-      // Broadcast the updated bandData to all clients
-      io.emit('update', bandData);
+        // Broadcast the updated bandData to all clients
+        io.emit('update', bandData);
+      } else {
+        socket.emit('error', `Mode ${mode} on band ${band} is not occupied`);
+      }
     }
   });
 
