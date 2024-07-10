@@ -95,9 +95,10 @@
       socket.emit('update', data);
     }
 
-    function checkOut(band) {
+    function checkOut(band, mode) {
       const data = {
         band,
+        mode,
         action: 'check-out'
       };
 
@@ -112,29 +113,31 @@
 
       // Populate table rows with band data
       const bands = ['1.8', '3.5', '7', '10', '14', '18', '21', '24', '28', 'Satellite'];
+      const modes = ['CW', 'SSB', 'Digital'];
       bands.forEach(band => {
-        const bandInfo = bandData[band];
-        const checkInTime = bandInfo && bandInfo.checkInTime ? new Date(bandInfo.checkInTime).toLocaleString() : '-';
-        const mode = bandInfo && bandInfo.mode ? bandInfo.mode : '-';
-        const operator = bandInfo && bandInfo.operator ? bandInfo.operator : '-';
-        
-        let actionButton = '';
-        if (bandInfo && bandInfo.operator === document.getElementById('operator').value) {
-          actionButton = `<button onclick="checkOut('${band}')">Check Out</button>`;
-        } else {
-          actionButton = `<button disabled>Check Out</button>`;
-        }
+        modes.forEach(mode => {
+          const bandInfo = bandData[band][mode];
+          const checkInTime = bandInfo && bandInfo.checkInTime ? new Date(bandInfo.checkInTime).toLocaleString() : '-';
+          const operator = bandInfo && bandInfo.operator ? bandInfo.operator : '-';
 
-        const row = `
-          <tr>
-            <td>${band}</td>
-            <td>${mode}</td>
-            <td>${operator}</td>
-            <td>${checkInTime}</td>
-            <td>${actionButton}</td>
-          </tr>
-        `;
-        tableBody.innerHTML += row;
+          let actionButton = '';
+          if (bandInfo && bandInfo.operator === document.getElementById('operator').value) {
+            actionButton = `<button onclick="checkOut('${band}', '${mode}')">Check Out</button>`;
+          } else {
+            actionButton = `<button disabled>Check Out</button>`;
+          }
+
+          const row = `
+            <tr>
+              <td>${band}</td>
+              <td>${mode}</td>
+              <td>${operator}</td>
+              <td>${checkInTime}</td>
+              <td>${actionButton}</td>
+            </tr>
+          `;
+          tableBody.innerHTML += row;
+        });
       });
     }
 
